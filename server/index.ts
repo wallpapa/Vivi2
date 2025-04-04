@@ -18,6 +18,36 @@ app.use((req, res, next) => {
   next();
 });
 
+// Basic health check - independent of Supabase
+app.get('/api/health', (_req, res) => {
+  console.log('Health check request received')
+  try {
+    const response = { 
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.RAILWAY_ENVIRONMENT || process.env.NODE_ENV || 'development',
+      port: process.env.PORT || 8080,
+      api_url: process.env.VITE_API_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`,
+      version: process.version,
+      memory: process.memoryUsage(),
+      cwd: process.cwd(),
+      pid: process.pid,
+      railway_domain: process.env.RAILWAY_PUBLIC_DOMAIN
+    }
+    
+    console.log('Health check response:', response)
+    res.status(200).json(response)
+  } catch (error) {
+    console.error('Health check error:', error)
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    })
+  }
+});
+
 // Serve static files from frontend build
 const clientDistPath = path.join(__dirname, '../client/dist');
 app.use('/app', express.static(clientDistPath));
@@ -186,37 +216,16 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
-// Basic health check - independent of Supabase
-app.get('/api/health', (_req, res) => {
-  console.log('Health check request received')
-  try {
-    const response = { 
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.RAILWAY_ENVIRONMENT || process.env.NODE_ENV || 'development',
-      port: process.env.PORT || 8080,
-      api_url: process.env.VITE_API_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`,
-      version: process.version,
-      memory: process.memoryUsage(),
-      cwd: process.cwd(),
-      pid: process.pid,
-      railway_domain: process.env.RAILWAY_PUBLIC_DOMAIN
-    }
-    
-    console.log('Health check response:', response)
-    res.status(200).json(response)
-  } catch (error) {
-    console.error('Health check error:', error)
-    res.status(500).json({
-      status: 'error',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    })
-  }
-})
-
 // Start server
 app.listen(port, () => {
-  console.log(`🚀 Server running on http://localhost:${port} - Dashboard: http://localhost:${port}/dashboard`);
+  console.log('=== Server Environment Information ===');
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('RAILWAY_ENVIRONMENT:', process.env.RAILWAY_ENVIRONMENT);
+  console.log('PORT:', process.env.PORT);
+  console.log('VITE_API_URL:', process.env.VITE_API_URL);
+  console.log('RAILWAY_PUBLIC_DOMAIN:', process.env.RAILWAY_PUBLIC_DOMAIN);
+  console.log('================================');
+  console.log(`🚀 Server running on http://localhost:${port}`);
+  console.log(`Health check: http://localhost:${port}/api/health`);
+  console.log(`Dashboard: http://localhost:${port}/dashboard`);
 });
