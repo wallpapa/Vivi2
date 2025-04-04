@@ -16,4 +16,7 @@ PORT = "3001"
 # Please set these environment variables in Railway's dashboard
 # VITE_SUPABASE_URL = "your-supabase-url"
 # VITE_SUPABASE_ANON_KEY = "your-supabase-anon-key"
-VITE_API_URL = "https://vivi2-production.up.railway.app"
+
+# Internal URL for service-to-service communication
+INTERNAL_URL = "http://vivi2.railway.internal"
+# The public URL will be automatically set by Railway
