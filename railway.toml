@@ -1,21 +1,9 @@
 # Railway configuration for Vivi2 application
 [build]
-builder = "nixpacks"
-buildCommand = """
-source $NIXPACKS_NUKE_DIR/env
-curl -fsSL https://fnm.vercel.app/install | bash
-export PATH=/root/.local/share/fnm:$PATH
-eval "$(fnm env)"
-fnm install 20.11.0
-fnm use 20.11.0
-npm install -g npm@10.8.2
-rm -rf node_modules package-lock.json
-npm install
-npm run build
-"""
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "NODE_ENV=production NODE_OPTIONS='--experimental-specifier-resolution=node --enable-source-maps' node dist/index.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
@@ -24,8 +12,6 @@ restartPolicyMaxRetries = 3
 [deploy.env]
 NODE_ENV = "production"
 PORT = "8080"
-NODE_VERSION = "20.11.0"
-NPM_VERSION = "10.8.2"
 # Please set these environment variables in Railway's dashboard
 # VITE_SUPABASE_URL = "your-supabase-url"
 # VITE_SUPABASE_ANON_KEY = "your-supabase-anon-key"

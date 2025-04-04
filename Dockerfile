@@ -1,12 +1,14 @@
-FROM node:18-alpine
+# Build stage
+FROM node:20.11.0-alpine AS builder
 
+# Set working directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
 # Copy the rest of the application
 COPY . .
@@ -14,8 +16,20 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Expose the port
-EXPOSE 3001
+# Production stage
+FROM node:20.11.0-alpine
+
+WORKDIR /app
+
+# Copy built assets from builder stage
+COPY --from=builder /app/dist ./dist
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm install --production
+
+# Expose the port the app runs on
+EXPOSE 8080
 
 # Start the application
-CMD ["npm", "run", "start"] 
+CMD ["node", "--experimental-specifier-resolution=node", "--enable-source-maps", "dist/index.js"] 
