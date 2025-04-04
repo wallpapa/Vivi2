@@ -1,82 +1,190 @@
-import express from 'express'
-import dotenv from 'dotenv'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
-import { createClient } from '@supabase/supabase-js'
+import express from 'express';
+import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 
-// Load environment variables
-dotenv.config()
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+const app = express();
+const port = process.env.PORT || 5000;
 
-const app = express()
-const port = parseInt(process.env.PORT || '8080', 10)  // Ensure port is a number
-
-// Initialize Supabase client lazily
-let supabaseClient: any = null;
-const getSupabase = () => {
-  if (!supabaseClient) {
-    try {
-      if (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_ANON_KEY) {
-        console.warn('Supabase credentials not configured - some features may be limited')
-        return null
-      }
-      
-      supabaseClient = createClient(
-        process.env.VITE_SUPABASE_URL,
-        process.env.VITE_SUPABASE_ANON_KEY,
-        {
-          auth: {
-            persistSession: false
-          }
-        }
-      )
-      console.log('Supabase client initialized successfully')
-    } catch (error) {
-      console.error('Failed to initialize Supabase client:', error)
-      return null
-    }
-  }
-  return supabaseClient
-}
-
-// Log health check result to database
-async function logHealthCheck(checkType: string, status: string, details: any, errorMessage?: string) {
-  const supabase = getSupabase()
-  if (!supabase) {
-    console.warn('Skipping health check logging - Supabase not configured')
-    return
-  }
-  
-  try {
-    const { error } = await supabase
-      .from('health_check_logs')
-      .insert({
-        check_type: checkType,
-        status,
-        details,
-        error_message: errorMessage
-      })
-
-    if (error) {
-      console.error('Failed to log health check:', error)
-    }
-  } catch (error) {
-    console.error('Error logging health check:', error)
-  }
-}
-
-// Middleware for logging requests
+// CORS headers for cross-origin requests
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
-  next()
-})
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
 
-app.use(express.json())
+// Serve static files from frontend build
+const clientDistPath = path.join(__dirname, '../client/dist');
+app.use('/app', express.static(clientDistPath));
 
-// Serve static files from the React app
-app.use(express.static(join(__dirname, '../dist')))
+// Root route
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+      <title>Vivi2 App</title>
+      <style>
+        body {
+          font-family: 'Segoe UI', sans-serif;
+          background: linear-gradient(135deg, #e0f7fa, #fff3e0);
+          margin: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          text-align: center;
+          color: #333;
+        }
+        h1 {
+          font-size: 2.5rem;
+          margin-bottom: 0.5rem;
+        }
+        p {
+          font-size: 1.2rem;
+        }
+      </style>
+    </head>
+    <body>
+      <div>
+        <h1>🚀 Vivi2 Server is Running</h1>
+        <p>Welcome to your deployed backend!</p>
+        <a href="/app" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#0070f3;color:white;border-radius:8px;text-decoration:none;font-weight:bold;">Go to Frontend</a>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
+// Dashboard route
+app.get('/dashboard', async (req, res) => {
+  const { branch, doctor } = req.query;
+
+  let query = supabase.from('payments').select('amount, created_at, branch, doctor');
+
+  if (branch) {
+    query = query.eq('branch', branch);
+  }
+
+  if (doctor) {
+    query = query.eq('doctor', doctor);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    return res.status(500).send('Error fetching data from Supabase.');
+  }
+
+  const monthlyTotals: Record<string, number> = {};
+
+  for (const entry of data) {
+    const month = new Date(entry.created_at).toLocaleString('default', { month: 'short' });
+    monthlyTotals[month] = (monthlyTotals[month] || 0) + entry.amount;
+  }
+
+  const chartLabels = Object.keys(monthlyTotals);
+  const chartValues = Object.values(monthlyTotals);
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Dashboard</title>
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <style>
+        body {
+          font-family: sans-serif;
+          margin: 2rem;
+          background: #f4f4f4;
+        }
+        h1 {
+          color: #0070f3;
+        }
+        canvas {
+          max-width: 600px;
+          margin-top: 2rem;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>📊 Dashboard - Monthly Revenue</h1>
+      <form id="filterForm" style="margin-bottom: 2rem;">
+        <label>
+          Branch:
+          <select name="branch" id="branchSelect">
+            <option value="">All</option>
+            <option value="Ekkamai">Ekkamai</option>
+            <option value="Siam">Siam</option>
+          </select>
+        </label>
+        <label style="margin-left: 1rem;">
+          Doctor:
+          <select name="doctor" id="doctorSelect">
+            <option value="">All</option>
+            <option value="Dr.Kwankao">Dr.Kwankao</option>
+            <option value="Dr.Nat">Dr.Nat</option>
+          </select>
+        </label>
+        <button type="submit" style="margin-left: 1rem;">Filter</button>
+      </form>
+      <p style="color: #555;">Filtered by: Branch = ${branch || 'All'}, Doctor = ${doctor || 'All'}</p>
+      <canvas id="myChart"></canvas>
+      <script>
+        // Set selected dropdown from query params
+        const urlParams = new URLSearchParams(window.location.search);
+        document.getElementById('branchSelect').value = urlParams.get('branch') || '';
+        document.getElementById('doctorSelect').value = urlParams.get('doctor') || '';
+
+        // Handle filter form submission
+        document.getElementById('filterForm').addEventListener('submit', function(event) {
+          event.preventDefault();
+          const branch = document.getElementById('branchSelect').value;
+          const doctor = document.getElementById('doctorSelect').value;
+          const query = new URLSearchParams({ branch, doctor }).toString();
+          window.location.search = query;
+        });
+
+        const ctx = document.getElementById('myChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ${JSON.stringify(chartLabels)},
+            datasets: [{
+              label: 'Revenue (THB)',
+              data: ${JSON.stringify(chartValues)},
+              backgroundColor: '#0070f3'
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: 'top' },
+              title: {
+                display: true,
+                text: 'Monthly Revenue'
+              }
+            }
+          }
+        });
+      </script>
+    </body>
+    </html>
+  `);
+});
+
+// Catch-all route for SPA support
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientDistPath, 'index.html'));
+});
 
 // Basic health check - independent of Supabase
 app.get('/api/health', (_req, res) => {
@@ -86,13 +194,14 @@ app.get('/api/health', (_req, res) => {
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development',
+      environment: process.env.RAILWAY_ENVIRONMENT || process.env.NODE_ENV || 'development',
       port: process.env.PORT || 8080,
-      api_url: process.env.VITE_API_URL || 'not set',
+      api_url: process.env.VITE_API_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`,
       version: process.version,
       memory: process.memoryUsage(),
       cwd: process.cwd(),
-      pid: process.pid
+      pid: process.pid,
+      railway_domain: process.env.RAILWAY_PUBLIC_DOMAIN
     }
     
     console.log('Health check response:', response)
@@ -107,93 +216,7 @@ app.get('/api/health', (_req, res) => {
   }
 })
 
-// Detailed health check
-app.get('/api/health/detailed', async (_req, res) => {
-  const supabase = getSupabase()
-  const response: any = {
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    uptime: process.uptime(),
-    envVars: {
-      port: !!process.env.PORT,
-      supabaseUrl: !!process.env.VITE_SUPABASE_URL,
-      supabaseKey: !!process.env.VITE_SUPABASE_ANON_KEY,
-      apiUrl: !!process.env.VITE_API_URL,
-      nodeEnv: process.env.NODE_ENV
-    },
-    metrics: {
-      memory: process.memoryUsage(),
-      cpu: process.cpuUsage()
-    }
-  }
-
-  // Only check Supabase if client is available
-  if (supabase) {
-    try {
-      const { error: supabaseError } = await supabase
-        .from('health_check')
-        .select('count')
-        .limit(1)
-
-      response.supabase = {
-        connected: !supabaseError,
-        error: supabaseError?.message
-      }
-    } catch (error) {
-      response.supabase = {
-        connected: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-  } else {
-    response.supabase = {
-      connected: false,
-      error: 'Supabase client not configured'
-    }
-  }
-
-  res.json(response)
-  
-  // Log in background
-  logHealthCheck('detailed', response.status, response).catch(error => {
-    console.error('Failed to log detailed health check:', error)
-  })
-})
-
-// Handle React routing, but only after health check
-app.get('*', (_req, res) => {
-  // Check if the file exists before sending
-  const indexPath = join(__dirname, '../dist/index.html')
-  if (!res.headersSent) {
-    res.sendFile(indexPath, (err) => {
-      if (err) {
-        console.error('Error sending index.html:', err)
-        res.status(500).send('Error loading application')
-      }
-    })
-  }
-})
-
-// Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled error:', err)
-  res.status(500).json({
-    status: 'error',
-    message: 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
-  })
-})
-
 // Start server
-app.listen(port, '0.0.0.0', () => {
-  console.log('=== Server Startup Information ===')
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
-  console.log(`Port: ${port}`)
-  console.log(`API URL: ${process.env.VITE_API_URL || 'not set'}`)
-  console.log(`Supabase: ${process.env.VITE_SUPABASE_URL ? 'configured' : 'not configured'}`)
-  console.log(`Server running at http://0.0.0.0:${port}`)
-  console.log(`Health check: http://0.0.0.0:${port}/api/health`)
-  console.log(`Detailed health check: http://0.0.0.0:${port}/api/health/detailed`)
-  console.log('================================')
-}) 
+app.listen(port, () => {
+  console.log(`🚀 Server running on http://localhost:${port} - Dashboard: http://localhost:${port}/dashboard`);
+});
