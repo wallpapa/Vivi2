@@ -9,7 +9,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "noUnusedParameters": false,
+    "noImplicitAny": false,
+    "noUnusedLocals": false
   },
   "include": ["server/**/*"],
   "exclude": ["node_modules", "dist", "src"]

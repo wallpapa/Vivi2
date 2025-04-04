@@ -79,7 +79,7 @@ app.use(express.json())
 app.use(express.static(join(__dirname, '../dist')))
 
 // Basic health check - independent of Supabase
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   try {
     const response = { 
       status: 'ok',
@@ -108,7 +108,7 @@ app.get('/api/health', (req, res) => {
 })
 
 // Detailed health check
-app.get('/api/health/detailed', async (req, res) => {
+app.get('/api/health/detailed', async (_req, res) => {
   const supabase = getSupabase()
   const response: any = {
     status: 'ok',
@@ -162,7 +162,7 @@ app.get('/api/health/detailed', async (req, res) => {
 })
 
 // Handle React routing
-app.get('*', (req, res) => {
+app.get('*', (_req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'))
 })
 
