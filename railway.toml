@@ -6,13 +6,14 @@ buildCommand = "npm install && npm run build"
 [deploy]
 startCommand = "npm run start"
 healthcheckPath = "/api/health"
-healthcheckTimeout = 100
+healthcheckTimeout = 30
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10
+restartPolicyMaxRetries = 3
 
 [deploy.env]
 NODE_ENV = "production"
 PORT = "3001"
-VITE_SUPABASE_URL = "https://vivi-2.supabase.co"
-VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpdmkta2F0aGF2YXJhc2FrdCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzM5MDI5NTg3LCJleHAiOjIwNTQ2MDU1ODd9.2Qh9Qh9Qh9Qh9Qh9Qh9Qh9Qh9Qh9Qh9Qh9Qh9Qh9Q"
+# Please set these environment variables in Railway's dashboard
+# VITE_SUPABASE_URL = "your-supabase-url"
+# VITE_SUPABASE_ANON_KEY = "your-supabase-anon-key"
 VITE_API_URL = "https://vivi2-production.up.railway.app"

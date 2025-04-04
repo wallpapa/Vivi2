@@ -89,8 +89,15 @@ app.get('/api/health', async (req, res) => {
     environment: process.env.NODE_ENV || 'development'
   }
   
-  await logHealthCheck('basic', 'ok', response)
+  // Send response immediately
   res.json(response)
+  
+  // Log health check in background without blocking response
+  try {
+    await logHealthCheck('basic', 'ok', response)
+  } catch (error) {
+    console.error('Failed to log health check:', error)
+  }
 })
 
 // Detailed health check
