@@ -6,7 +6,6 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-COPY tsconfig*.json ./
 
 # Install dependencies
 RUN npm install
@@ -38,5 +37,5 @@ EXPOSE 8080
 # Use tini as entrypoint
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Start the application with ES module support
-CMD ["node", "--experimental-specifier-resolution=node", "dist/server/index.js"] 
+# Start the application
+CMD ["node", "dist/server/index.js"] 
