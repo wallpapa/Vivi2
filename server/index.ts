@@ -80,19 +80,31 @@ app.use(express.static(join(__dirname, '../dist')))
 
 // Basic health check - independent of Supabase
 app.get('/api/health', (req, res) => {
-  const response = { 
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
+  try {
+    const response = { 
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+      port: process.env.PORT || 3001,
+      api_url: process.env.VITE_API_URL || 'not set'
+    }
+    
+    console.log('Health check response:', response)
+    res.json(response)
+    
+    // Log health check in background without blocking
+    logHealthCheck('basic', 'ok', response).catch(error => {
+      console.error('Failed to log health check:', error)
+    })
+  } catch (error) {
+    console.error('Health check error:', error)
+    res.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    })
   }
-  
-  res.json(response)
-  
-  // Log health check in background without blocking
-  logHealthCheck('basic', 'ok', response).catch(error => {
-    console.error('Failed to log health check:', error)
-  })
 })
 
 // Detailed health check
