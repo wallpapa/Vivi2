@@ -13,44 +13,42 @@ const __dirname = dirname(__filename)
 const app = express()
 const port = process.env.PORT || 3001
 
-// Validate required environment variables
-const requiredEnvVars = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']
-const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName])
-
-if (missingEnvVars.length > 0) {
-  console.error('=== Environment Variable Error ===')
-  console.error('Missing required environment variables:')
-  missingEnvVars.forEach(varName => {
-    console.error(`- ${varName}`)
-  })
-  console.error('Please ensure all required environment variables are set in Railway')
-  console.error('================================')
-  process.exit(1)
-}
-
-// Initialize Supabase client with error handling
-let supabase
-try {
-  supabase = createClient(
-    process.env.VITE_SUPABASE_URL!,
-    process.env.VITE_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        persistSession: false
+// Initialize Supabase client lazily
+let supabaseClient: any = null;
+const getSupabase = () => {
+  if (!supabaseClient) {
+    try {
+      if (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_ANON_KEY) {
+        console.warn('Supabase credentials not configured')
+        return null
       }
+      
+      supabaseClient = createClient(
+        process.env.VITE_SUPABASE_URL,
+        process.env.VITE_SUPABASE_ANON_KEY,
+        {
+          auth: {
+            persistSession: false
+          }
+        }
+      )
+      console.log('Supabase client initialized successfully')
+    } catch (error) {
+      console.error('Failed to initialize Supabase client:', error)
+      return null
     }
-  )
-  console.log('Supabase client initialized successfully')
-} catch (error) {
-  console.error('=== Supabase Initialization Error ===')
-  console.error('Failed to initialize Supabase client:', error)
-  console.error('Please check your Supabase credentials')
-  console.error('================================')
-  process.exit(1)
+  }
+  return supabaseClient
 }
 
 // Log health check result to database
 async function logHealthCheck(checkType: string, status: string, details: any, errorMessage?: string) {
+  const supabase = getSupabase()
+  if (!supabase) {
+    console.warn('Skipping health check logging - Supabase not configured')
+    return
+  }
+  
   try {
     const { error } = await supabase
       .from('health_check_logs')
@@ -80,8 +78,8 @@ app.use(express.json())
 // Serve static files from the React app
 app.use(express.static(join(__dirname, '../dist')))
 
-// Basic health check
-app.get('/api/health', async (req, res) => {
+// Basic health check - independent of Supabase
+app.get('/api/health', (req, res) => {
   const response = { 
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -89,65 +87,66 @@ app.get('/api/health', async (req, res) => {
     environment: process.env.NODE_ENV || 'development'
   }
   
-  // Send response immediately
   res.json(response)
   
-  // Log health check in background without blocking response
-  try {
-    await logHealthCheck('basic', 'ok', response)
-  } catch (error) {
+  // Log health check in background without blocking
+  logHealthCheck('basic', 'ok', response).catch(error => {
     console.error('Failed to log health check:', error)
-  }
+  })
 })
 
 // Detailed health check
 app.get('/api/health/detailed', async (req, res) => {
-  try {
-    // Check Supabase connection
-    const { data: supabaseHealth, error: supabaseError } = await supabase
-      .from('health_check')
-      .select('count')
-      .limit(1)
-
-    // Check environment variables
-    const envVars = {
+  const supabase = getSupabase()
+  const response: any = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    uptime: process.uptime(),
+    envVars: {
       port: !!process.env.PORT,
       supabaseUrl: !!process.env.VITE_SUPABASE_URL,
       supabaseKey: !!process.env.VITE_SUPABASE_ANON_KEY,
       apiUrl: !!process.env.VITE_API_URL,
-      nodeEnv: process.env.NODE_ENV || 'development'
-    }
-
-    // System metrics
-    const metrics = {
+      nodeEnv: process.env.NODE_ENV
+    },
+    metrics: {
       memory: process.memoryUsage(),
-      cpu: process.cpuUsage(),
-      uptime: process.uptime()
+      cpu: process.cpuUsage()
     }
+  }
 
-    const response = {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV,
-      supabase: {
+  // Only check Supabase if client is available
+  if (supabase) {
+    try {
+      const { error: supabaseError } = await supabase
+        .from('health_check')
+        .select('count')
+        .limit(1)
+
+      response.supabase = {
         connected: !supabaseError,
         error: supabaseError?.message
-      },
-      envVars,
-      metrics
+      }
+    } catch (error) {
+      response.supabase = {
+        connected: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
     }
-
-    await logHealthCheck('detailed', 'ok', response)
-    res.json(response)
-  } catch (error) {
-    const errorResponse = {
-      status: 'error',
-      timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : 'Unknown error'
+  } else {
+    response.supabase = {
+      connected: false,
+      error: 'Supabase client not configured'
     }
-    await logHealthCheck('detailed', 'error', errorResponse, error instanceof Error ? error.message : 'Unknown error')
-    res.status(500).json(errorResponse)
   }
+
+  res.json(response)
+  
+  // Log in background
+  logHealthCheck('detailed', response.status, response).catch(error => {
+    console.error('Failed to log detailed health check:', error)
+  })
 })
 
 // Handle React routing
@@ -170,9 +169,6 @@ app.listen(port, () => {
   console.log('=== Server Startup Information ===')
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
   console.log(`Port: ${port}`)
-  console.log(`Supabase URL: ${process.env.VITE_SUPABASE_URL ? 'Configured' : 'Missing'}`)
-  console.log(`Supabase Key: ${process.env.VITE_SUPABASE_ANON_KEY ? 'Configured' : 'Missing'}`)
-  console.log(`API URL: ${process.env.VITE_API_URL || 'Not configured'}`)
   console.log(`Server running at http://localhost:${port}`)
   console.log(`Health check: http://localhost:${port}/api/health`)
   console.log(`Detailed health check: http://localhost:${port}/api/health/detailed`)
