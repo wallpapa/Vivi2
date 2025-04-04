@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { createClient } from '@supabase/supabase-js'
 
+// Load environment variables
 dotenv.config()
 
 const __filename = fileURLToPath(import.meta.url)
@@ -11,6 +12,15 @@ const __dirname = dirname(__filename)
 
 const app = express()
 const port = process.env.PORT || 3001
+
+// Validate required environment variables
+const requiredEnvVars = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']
+const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName])
+
+if (missingEnvVars.length > 0) {
+  console.error('Missing required environment variables:', missingEnvVars)
+  process.exit(1)
+}
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -38,6 +48,12 @@ async function logHealthCheck(checkType: string, status: string, details: any, e
   }
 }
 
+// Middleware for logging requests
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
+  next()
+})
+
 app.use(express.json())
 
 // Serve static files from the React app
@@ -48,7 +64,8 @@ app.get('/api/health', async (req, res) => {
   const response = { 
     status: 'ok',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
   }
   
   await logHealthCheck('basic', 'ok', response)
@@ -69,7 +86,8 @@ app.get('/api/health/detailed', async (req, res) => {
       port: !!process.env.PORT,
       supabaseUrl: !!process.env.VITE_SUPABASE_URL,
       supabaseKey: !!process.env.VITE_SUPABASE_ANON_KEY,
-      apiUrl: !!process.env.VITE_API_URL
+      apiUrl: !!process.env.VITE_API_URL,
+      nodeEnv: process.env.NODE_ENV || 'development'
     }
 
     // System metrics
@@ -109,7 +127,19 @@ app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'))
 })
 
+// Error handling middleware
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Unhandled error:', err)
+  res.status(500).json({
+    status: 'error',
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  })
+})
+
 // Start server
 app.listen(port, () => {
   console.log(`Server is running on port ${port} in ${process.env.NODE_ENV || 'development'} mode`)
+  console.log(`Health check available at http://localhost:${port}/api/health`)
+  console.log(`Detailed health check available at http://localhost:${port}/api/health/detailed`)
 }) 
