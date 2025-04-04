@@ -1,10 +1,11 @@
+# Railway configuration for Vivi2 application
 [build]
 builder = "nixpacks"
 buildCommand = "npm install && npm run build"
 
 [deploy]
 startCommand = "npm run start"
-healthcheckPath = "/"
+healthcheckPath = "/api/health"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
@@ -14,4 +15,14 @@ NODE_ENV = "production"
 PORT = "3001"
 VITE_SUPABASE_URL = "https://vivi-2.supabase.co"
 VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpdmkta2F0aGF2YXJhc2FrdCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzM5MDI5NTg3LCJleHAiOjIwNTQ2MDU1ODd9.2Qh9Qh9Qh9Qh9Qh9Qh9Qh9Qh9Qh9Qh9Qh9Qh9Qh9Q"
-VITE_API_URL = "https://vivi2-production.up.railway.app" 
+VITE_API_URL = "https://vivi2-production.up.railway.app"
+
+Missing required environment variable: VITE_SUPABASE_URL
+Missing required environment variable: VITE_SUPABASE_ANON_KEY
+
+Error: listen EADDRINUSE...
+Connection refused...
+Database connection failed... 
+
+Health check failed: ...
+API endpoint not responding: ...
