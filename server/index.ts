@@ -1,14 +1,27 @@
 import express from 'express';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
+import { fileURLToPath } from 'url';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+// Environment configuration
+const ENV = {
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT || 'development',
+  PORT: process.env.PORT || 8080,
+  RAILWAY_PUBLIC_DOMAIN: process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost',
+  VITE_API_URL: process.env.VITE_API_URL || '',
+  SUPABASE_URL: process.env.SUPABASE_URL || '',
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+};
+
+// Convert __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const supabase = createClient(ENV.SUPABASE_URL, ENV.SUPABASE_SERVICE_ROLE_KEY);
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = parseInt(ENV.PORT.toString(), 10);
 
 // CORS headers for cross-origin requests
 app.use((req, res, next) => {
@@ -20,31 +33,37 @@ app.use((req, res, next) => {
 
 // Basic health check - independent of Supabase
 app.get('/api/health', (_req, res) => {
-  console.log('Health check request received')
+  console.log('Health check request received');
   try {
+    const apiUrl = ENV.VITE_API_URL || `https://${ENV.RAILWAY_PUBLIC_DOMAIN}`;
     const response = { 
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      environment: process.env.RAILWAY_ENVIRONMENT || process.env.NODE_ENV || 'development',
-      port: process.env.PORT || 8080,
-      api_url: process.env.VITE_API_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`,
+      environment: ENV.RAILWAY_ENVIRONMENT || ENV.NODE_ENV,
+      port: ENV.PORT,
+      api_url: apiUrl,
       version: process.version,
       memory: process.memoryUsage(),
       cwd: process.cwd(),
       pid: process.pid,
-      railway_domain: process.env.RAILWAY_PUBLIC_DOMAIN
-    }
+      railway_domain: ENV.RAILWAY_PUBLIC_DOMAIN,
+      config: {
+        node_env: ENV.NODE_ENV,
+        railway_env: ENV.RAILWAY_ENVIRONMENT,
+        has_supabase: !!ENV.SUPABASE_URL
+      }
+    };
     
-    console.log('Health check response:', response)
-    res.status(200).json(response)
+    console.log('Health check response:', response);
+    res.status(200).json(response);
   } catch (error) {
-    console.error('Health check error:', error)
+    console.error('Health check error:', error);
     res.status(500).json({
       status: 'error',
       message: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
-    })
+    });
   }
 });
 
@@ -219,13 +238,9 @@ app.get('*', (req, res) => {
 // Start server
 app.listen(port, () => {
   console.log('=== Server Environment Information ===');
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-  console.log('RAILWAY_ENVIRONMENT:', process.env.RAILWAY_ENVIRONMENT);
-  console.log('PORT:', process.env.PORT);
-  console.log('VITE_API_URL:', process.env.VITE_API_URL);
-  console.log('RAILWAY_PUBLIC_DOMAIN:', process.env.RAILWAY_PUBLIC_DOMAIN);
+  console.log('Configuration:', ENV);
   console.log('================================');
-  console.log(`🚀 Server running on http://localhost:${port}`);
+  console.log(`🚀 Server running on port ${port}`);
   console.log(`Health check: http://localhost:${port}/api/health`);
   console.log(`Dashboard: http://localhost:${port}/dashboard`);
 });
