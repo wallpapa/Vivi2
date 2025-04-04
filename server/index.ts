@@ -80,23 +80,23 @@ app.use(express.static(join(__dirname, '../dist')))
 
 // Basic health check - independent of Supabase
 app.get('/api/health', (_req, res) => {
+  console.log('Health check request received')
   try {
     const response = { 
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: process.env.NODE_ENV || 'development',
-      port: process.env.PORT || 3001,
-      api_url: process.env.VITE_API_URL || 'not set'
+      port: process.env.PORT || 8080,
+      api_url: process.env.VITE_API_URL || 'not set',
+      version: process.version,
+      memory: process.memoryUsage(),
+      cwd: process.cwd(),
+      pid: process.pid
     }
     
     console.log('Health check response:', response)
-    res.json(response)
-    
-    // Log health check in background without blocking
-    logHealthCheck('basic', 'ok', response).catch(error => {
-      console.error('Failed to log health check:', error)
-    })
+    res.status(200).json(response)
   } catch (error) {
     console.error('Health check error:', error)
     res.status(500).json({
@@ -161,9 +161,18 @@ app.get('/api/health/detailed', async (_req, res) => {
   })
 })
 
-// Handle React routing
+// Handle React routing, but only after health check
 app.get('*', (_req, res) => {
-  res.sendFile(join(__dirname, '../dist/index.html'))
+  // Check if the file exists before sending
+  const indexPath = join(__dirname, '../dist/index.html')
+  if (!res.headersSent) {
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error('Error sending index.html:', err)
+        res.status(500).send('Error loading application')
+      }
+    })
+  }
 })
 
 // Error handling middleware
