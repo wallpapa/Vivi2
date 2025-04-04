@@ -25,4 +25,3 @@ RAILWAY_PUBLIC_DOMAIN = "vivi2-production.up.railway.app"
 
 # Internal URL for service-to-service communication
 INTERNAL_URL = "http://vivi2.railway.internal"
-# The public URL will be automatically set by Railway
