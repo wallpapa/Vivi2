@@ -81,51 +81,6 @@ app.get('/api/health', (_req, res) => {
   }
 });
 
-// Serve static files from frontend build
-const clientDistPath = path.join(__dirname, '../client/dist');
-app.use('/app', express.static(clientDistPath));
-
-// Root route
-app.get('/', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-      <title>Vivi2 App</title>
-      <style>
-        body {
-          font-family: 'Segoe UI', sans-serif;
-          background: linear-gradient(135deg, #e0f7fa, #fff3e0);
-          margin: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          height: 100vh;
-          text-align: center;
-          color: #333;
-        }
-        h1 {
-          font-size: 2.5rem;
-          margin-bottom: 0.5rem;
-        }
-        p {
-          font-size: 1.2rem;
-        }
-      </style>
-    </head>
-    <body>
-      <div>
-        <h1>🚀 Vivi2 Server is Running</h1>
-        <p>Welcome to your deployed backend!</p>
-        <a href="/app" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#0070f3;color:white;border-radius:8px;text-decoration:none;font-weight:bold;">Go to Frontend</a>
-      </div>
-    </body>
-    </html>
-  `);
-});
-
 // Dashboard route - only available if Supabase is configured
 app.get('/dashboard', async (req, res) => {
   if (!supabase) {
@@ -196,13 +151,8 @@ app.get('/dashboard', async (req, res) => {
             margin: 2rem;
             background: #f4f4f4;
           }
-          h1 {
-            color: #0070f3;
-          }
-          canvas {
-            max-width: 600px;
-            margin-top: 2rem;
-          }
+          h1 { color: #0070f3; }
+          canvas { max-width: 600px; margin-top: 2rem; }
         </style>
       </head>
       <body>
@@ -229,12 +179,9 @@ app.get('/dashboard', async (req, res) => {
         <p style="color: #555;">Filtered by: Branch = ${branch || 'All'}, Doctor = ${doctor || 'All'}</p>
         <canvas id="myChart"></canvas>
         <script>
-          // Set selected dropdown from query params
           const urlParams = new URLSearchParams(window.location.search);
           document.getElementById('branchSelect').value = urlParams.get('branch') || '';
           document.getElementById('doctorSelect').value = urlParams.get('doctor') || '';
-
-          // Handle filter form submission
           document.getElementById('filterForm').addEventListener('submit', function(event) {
             event.preventDefault();
             const branch = document.getElementById('branchSelect').value;
@@ -258,10 +205,7 @@ app.get('/dashboard', async (req, res) => {
               responsive: true,
               plugins: {
                 legend: { position: 'top' },
-                title: {
-                  display: true,
-                  text: 'Monthly Revenue'
-                }
+                title: { display: true, text: 'Monthly Revenue' }
               }
             }
           });
@@ -297,9 +241,254 @@ app.get('/dashboard', async (req, res) => {
   }
 });
 
+// Admin report route
+app.get('/admin/report', async (req, res) => {
+  if (!supabase) {
+    return res.status(503).send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Report Unavailable</title>
+        <style>
+          body {
+            font-family: sans-serif;
+            margin: 2rem;
+            background: #f4f4f4;
+            text-align: center;
+          }
+          h1 { color: #d32f2f; }
+        </style>
+      </head>
+      <body>
+        <h1>⚠️ Report Unavailable</h1>
+        <p>The report is currently unavailable because Supabase is not configured.</p>
+        <p>Please set up Supabase credentials in the environment configuration.</p>
+      </body>
+      </html>
+    `);
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('payments')
+      .select('id, created_at, amount, patient_name, doctor, branch')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      throw error;
+    }
+
+    const rows = data.map((r) => `
+      <tr>
+        <td>${r.created_at}</td>
+        <td>${r.patient_name || '-'}</td>
+        <td>${r.doctor || '-'}</td>
+        <td>${r.branch || '-'}</td>
+        <td style="text-align:right;">${r.amount.toLocaleString()}</td>
+      </tr>
+    `).join('');
+
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Transaction Report</title>
+        <style>
+          body {
+            font-family: sans-serif;
+            margin: 2rem;
+            background: #fff;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2rem;
+          }
+          th, td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #ccc;
+          }
+          th {
+            background: #0070f3;
+            color: white;
+            text-align: left;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>📁 รายงานการชำระเงินล่าสุด</h1>
+        <table>
+          <thead>
+            <tr>
+              <th>วันที่</th>
+              <th>ชื่อคนไข้</th>
+              <th>แพทย์</th>
+              <th>สาขา</th>
+              <th style="text-align:right;">ยอดเงิน</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </body>
+      </html>
+    `);
+  } catch (error) {
+    console.error('Report error:', error);
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Report Error</title>
+        <style>
+          body {
+            font-family: sans-serif;
+            margin: 2rem;
+            background: #f4f4f4;
+            text-align: center;
+          }
+          h1 { color: #d32f2f; }
+        </style>
+      </head>
+      <body>
+        <h1>❌ Report Error</h1>
+        <p>An error occurred while fetching report data:</p>
+        <pre style="color: #d32f2f;">${error instanceof Error ? error.message : 'Unknown error'}</pre>
+      </body>
+      </html>
+    `);
+  }
+});
+
+// Admin commission route
+app.get('/admin/commission', async (req, res) => {
+  if (!supabase) {
+    return res.status(503).send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Commission Unavailable</title>
+        <style>
+          body {
+            font-family: sans-serif;
+            margin: 2rem;
+            background: #f4f4f4;
+            text-align: center;
+          }
+          h1 { color: #d32f2f; }
+        </style>
+      </head>
+      <body>
+        <h1>⚠️ Commission Unavailable</h1>
+        <p>The commission page is currently unavailable because Supabase is not configured.</p>
+        <p>Please set up Supabase credentials in the environment configuration.</p>
+      </body>
+      </html>
+    `);
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('commissions')
+      .select('staff_name, staff_type, total_earnings, month')
+      .order('month', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      throw error;
+    }
+
+    const rows = data.map((r) => `
+      <tr>
+        <td>${r.month}</td>
+        <td>${r.staff_name}</td>
+        <td>${r.staff_type}</td>
+        <td style="text-align:right;">${r.total_earnings?.toLocaleString() || 0}</td>
+      </tr>
+    `).join('');
+
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Commission Summary</title>
+        <style>
+          body {
+            font-family: sans-serif;
+            margin: 2rem;
+            background: #fafafa;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2rem;
+          }
+          th, td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #ddd;
+          }
+          th {
+            background: #28a745;
+            color: white;
+            text-align: left;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>💰 Commission Overview</h1>
+        <table>
+          <thead>
+            <tr>
+              <th>เดือน</th>
+              <th>ชื่อบุคลากร</th>
+              <th>ประเภท</th>
+              <th style="text-align:right;">รายได้รวม (บาท)</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </body>
+      </html>
+    `);
+  } catch (error) {
+    console.error('Commission error:', error);
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Commission Error</title>
+        <style>
+          body {
+            font-family: sans-serif;
+            margin: 2rem;
+            background: #f4f4f4;
+            text-align: center;
+          }
+          h1 { color: #d32f2f; }
+        </style>
+      </head>
+      <body>
+        <h1>❌ Commission Error</h1>
+        <p>An error occurred while fetching commission data:</p>
+        <pre style="color: #d32f2f;">${error instanceof Error ? error.message : 'Unknown error'}</pre>
+      </body>
+      </html>
+    `);
+  }
+});
+
+// Serve static files from frontend build
+app.use(express.static(path.join(__dirname, '../client')));
+
 // Catch-all route for SPA support
 app.get('*', (req, res) => {
-  res.sendFile(path.join(clientDistPath, 'index.html'));
+  res.sendFile(path.join(__dirname, '../client/index.html'));
 });
 
 // Start server
