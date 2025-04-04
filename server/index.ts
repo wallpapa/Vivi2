@@ -3,16 +3,20 @@ import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 import { fileURLToPath } from 'url';
 
-// Environment configuration
+// Environment configuration with explicit defaults
 const ENV = {
-  NODE_ENV: process.env.NODE_ENV || 'development',
-  RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT || 'development',
+  NODE_ENV: process.env.NODE_ENV || process.env.RAILWAY_ENVIRONMENT || 'development',
   PORT: process.env.PORT || 8080,
+  API_URL: process.env.VITE_API_URL || process.env.RAILWAY_STATIC_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`,
   RAILWAY_PUBLIC_DOMAIN: process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost',
-  VITE_API_URL: process.env.VITE_API_URL || '',
   SUPABASE_URL: process.env.SUPABASE_URL || '',
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 };
+
+// Log environment configuration at startup
+console.log('=== Environment Configuration ===');
+console.log(JSON.stringify(ENV, null, 2));
+console.log('===============================');
 
 // Convert __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -21,7 +25,7 @@ const __dirname = path.dirname(__filename);
 const supabase = createClient(ENV.SUPABASE_URL, ENV.SUPABASE_SERVICE_ROLE_KEY);
 
 const app = express();
-const port = parseInt(ENV.PORT.toString(), 10);
+const port = parseInt(String(ENV.PORT), 10);
 
 // CORS headers for cross-origin requests
 app.use((req, res, next) => {
@@ -35,14 +39,13 @@ app.use((req, res, next) => {
 app.get('/api/health', (_req, res) => {
   console.log('Health check request received');
   try {
-    const apiUrl = ENV.VITE_API_URL || `https://${ENV.RAILWAY_PUBLIC_DOMAIN}`;
-    const response = { 
+    const response = {
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      environment: ENV.RAILWAY_ENVIRONMENT || ENV.NODE_ENV,
+      environment: ENV.NODE_ENV,
       port: ENV.PORT,
-      api_url: apiUrl,
+      api_url: ENV.API_URL,
       version: process.version,
       memory: process.memoryUsage(),
       cwd: process.cwd(),
@@ -50,7 +53,7 @@ app.get('/api/health', (_req, res) => {
       railway_domain: ENV.RAILWAY_PUBLIC_DOMAIN,
       config: {
         node_env: ENV.NODE_ENV,
-        railway_env: ENV.RAILWAY_ENVIRONMENT,
+        api_url: ENV.API_URL,
         has_supabase: !!ENV.SUPABASE_URL
       }
     };
@@ -237,10 +240,7 @@ app.get('*', (req, res) => {
 
 // Start server
 app.listen(port, () => {
-  console.log('=== Server Environment Information ===');
-  console.log('Configuration:', ENV);
-  console.log('================================');
-  console.log(`🚀 Server running on port ${port}`);
+  console.log(`🚀 Server running in ${ENV.NODE_ENV} mode on port ${port}`);
   console.log(`Health check: http://localhost:${port}/api/health`);
-  console.log(`Dashboard: http://localhost:${port}/dashboard`);
+  console.log(`API URL: ${ENV.API_URL}`);
 });
