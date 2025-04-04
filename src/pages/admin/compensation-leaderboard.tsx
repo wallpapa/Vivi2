@@ -12,8 +12,8 @@ function hasFiveDayStreak(dates: string[]): boolean {
   const sorted = Array.from(new Set(dates.map((d) => d.slice(0, 10)))).sort()
   let streak = 1
   for (let i = 1; i < sorted.length; i++) {
-    const prev = parse(sorted[i - 1])
-    const current = parse(sorted[i])
+    const prev = parse(sorted[i - 1], 'yyyy-MM-dd', new Date())
+    const current = parse(sorted[i], 'yyyy-MM-dd', new Date())
     if (differenceInCalendarDays(current, prev) === 1) {
       streak++
       if (streak >= 5) return true
@@ -37,7 +37,10 @@ export default function CompensationLeaderboard() {
         .eq('status', 'completed')
 
       const filtered = data?.filter((entry) =>
-        isSameMonth(parse(entry.created_at), parse(`${month}-01`))
+        isSameMonth(
+          parse(entry.created_at, 'yyyy-MM-dd\'T\'HH:mm:ss.SSSX', new Date()),
+          parse(`${month}-01`, 'yyyy-MM-dd', new Date())
+        )
       )
 
       const summary: Record<string, { role: string; total: number }> = {}
