@@ -4,7 +4,7 @@ builder = "nixpacks"
 buildCommand = "npm install && npm run build"
 
 [deploy]
-startCommand = "NODE_ENV=production PORT=8080 npm run start"
+startCommand = "npm run start"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
