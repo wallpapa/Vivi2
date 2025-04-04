@@ -3,12 +3,12 @@
 builder = "nixpacks"
 buildCommand = """
 npm install -g npm@10.8.2
-npm install --no-audit --no-fund
+NODE_ENV=production npm ci
 npm run build
 """
 
 [deploy]
-startCommand = "npm run start"
+startCommand = "NODE_ENV=production NODE_OPTIONS='--experimental-specifier-resolution=node --enable-source-maps' node dist/index.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
