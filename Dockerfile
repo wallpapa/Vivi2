@@ -23,7 +23,8 @@ WORKDIR /app
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist ./dist
-COPY package*.json ./
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/server ./server
 
 # Install production dependencies only
 RUN npm install --production
@@ -32,4 +33,4 @@ RUN npm install --production
 EXPOSE 8080
 
 # Start the application
-CMD ["node", "--experimental-specifier-resolution=node", "--enable-source-maps", "dist/index.js"] 
+CMD ["node", "--experimental-specifier-resolution=node", "--enable-source-maps", "server/index.js"] 
