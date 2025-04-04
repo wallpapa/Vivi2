@@ -99,58 +99,17 @@ app.get('/api/health/detailed', async (req, res) => {
       timestamp: new Date().toISOString(),
       error: error instanceof Error ? error.message : 'Unknown error'
     }
-    
     await logHealthCheck('detailed', 'error', errorResponse, error instanceof Error ? error.message : 'Unknown error')
     res.status(500).json(errorResponse)
   }
 })
 
-// Database health check
-app.get('/api/health/db', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('payments')
-      .select('count')
-      .limit(1)
-
-    if (error) throw error
-
-    const response = {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      database: {
-        connected: true,
-        tables: {
-          payments: 'accessible'
-        }
-      }
-    }
-
-    await logHealthCheck('database', 'ok', response)
-    res.json(response)
-  } catch (error) {
-    const errorResponse = {
-      status: 'error',
-      timestamp: new Date().toISOString(),
-      database: {
-        connected: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-    
-    await logHealthCheck('database', 'error', errorResponse, error instanceof Error ? error.message : 'Unknown error')
-    res.status(500).json(errorResponse)
-  }
-})
-
-// Handle React routing, return all requests to React app
+// Handle React routing
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'))
 })
 
+// Start server
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`)
-  console.log(`Health check available at http://localhost:${port}/api/health`)
-  console.log(`Detailed health check available at http://localhost:${port}/api/health/detailed`)
-  console.log(`Database health check available at http://localhost:${port}/api/health/db`)
+  console.log(`Server is running on port ${port} in ${process.env.NODE_ENV || 'development'} mode`)
 }) 
