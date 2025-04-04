@@ -2,8 +2,15 @@
 [build]
 builder = "nixpacks"
 buildCommand = """
+source $NIXPACKS_NUKE_DIR/env
+curl -fsSL https://fnm.vercel.app/install | bash
+export PATH=/root/.local/share/fnm:$PATH
+eval "$(fnm env)"
+fnm install 20.11.0
+fnm use 20.11.0
 npm install -g npm@10.8.2
-NODE_ENV=production npm ci
+rm -rf node_modules package-lock.json
+npm install
 npm run build
 """
 
