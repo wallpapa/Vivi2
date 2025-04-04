@@ -31,16 +31,11 @@ RUN npm install --production
 # Add tini
 RUN apk add --no-cache tini
 
-# Set default environment variables
-ENV NODE_ENV=production \
-    PORT=8080 \
-    RAILWAY_ENVIRONMENT=production
-
 # Expose the port the app runs on
 EXPOSE 8080
 
 # Use tini as entrypoint
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Start the application with ES module support and environment variables
-CMD ["sh", "-c", "NODE_ENV=$NODE_ENV RAILWAY_ENVIRONMENT=$RAILWAY_ENVIRONMENT PORT=$PORT node --experimental-specifier-resolution=node dist/server/index.js"] 
+# The actual command will be provided by Railway's startCommand
+CMD ["node", "--experimental-specifier-resolution=node", "dist/server/index.js"] 
