@@ -139,7 +139,14 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 
 // Start server
 app.listen(port, () => {
-  console.log(`Server is running on port ${port} in ${process.env.NODE_ENV || 'development'} mode`)
-  console.log(`Health check available at http://localhost:${port}/api/health`)
-  console.log(`Detailed health check available at http://localhost:${port}/api/health/detailed`)
+  console.log('=== Server Startup Information ===')
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
+  console.log(`Port: ${port}`)
+  console.log(`Supabase URL: ${process.env.VITE_SUPABASE_URL ? 'Configured' : 'Missing'}`)
+  console.log(`Supabase Key: ${process.env.VITE_SUPABASE_ANON_KEY ? 'Configured' : 'Missing'}`)
+  console.log(`API URL: ${process.env.VITE_API_URL || 'Not configured'}`)
+  console.log(`Server running at http://localhost:${port}`)
+  console.log(`Health check: http://localhost:${port}/api/health`)
+  console.log(`Detailed health check: http://localhost:${port}/api/health/detailed`)
+  console.log('================================')
 }) 
