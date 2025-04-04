@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 const app = express()
-const port = process.env.PORT || 3001
+const port = parseInt(process.env.PORT || '8080', 10)  // Ensure port is a number
 
 // Initialize Supabase client lazily
 let supabaseClient: any = null;
@@ -19,7 +19,7 @@ const getSupabase = () => {
   if (!supabaseClient) {
     try {
       if (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_ANON_KEY) {
-        console.warn('Supabase credentials not configured')
+        console.warn('Supabase credentials not configured - some features may be limited')
         return null
       }
       
@@ -177,12 +177,14 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 })
 
 // Start server
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
   console.log('=== Server Startup Information ===')
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
   console.log(`Port: ${port}`)
-  console.log(`Server running at http://localhost:${port}`)
-  console.log(`Health check: http://localhost:${port}/api/health`)
-  console.log(`Detailed health check: http://localhost:${port}/api/health/detailed`)
+  console.log(`API URL: ${process.env.VITE_API_URL || 'not set'}`)
+  console.log(`Supabase: ${process.env.VITE_SUPABASE_URL ? 'configured' : 'not configured'}`)
+  console.log(`Server running at http://0.0.0.0:${port}`)
+  console.log(`Health check: http://0.0.0.0:${port}/api/health`)
+  console.log(`Detailed health check: http://0.0.0.0:${port}/api/health/detailed`)
   console.log('================================')
 }) 
