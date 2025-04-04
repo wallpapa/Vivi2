@@ -1,7 +1,11 @@
 # Railway configuration for Vivi2 application
 [build]
 builder = "nixpacks"
-buildCommand = "npm install --legacy-peer-deps && npm run build"
+buildCommand = """
+npm install -g npm@10.8.2
+npm install --no-audit --no-fund
+npm run build
+"""
 
 [deploy]
 startCommand = "npm run start"
@@ -14,6 +18,7 @@ restartPolicyMaxRetries = 3
 NODE_ENV = "production"
 PORT = "8080"
 NODE_VERSION = "20.11.0"
+NPM_VERSION = "10.8.2"
 # Please set these environment variables in Railway's dashboard
 # VITE_SUPABASE_URL = "your-supabase-url"
 # VITE_SUPABASE_ANON_KEY = "your-supabase-anon-key"
