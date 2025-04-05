@@ -26,7 +26,9 @@ export default defineConfig({
   build: {
     outDir: 'dist/client',
     emptyOutDir: true,
-    sourcemap: process.env.NODE_ENV === 'development',
+    sourcemap: false,
+    minify: true,
+    target: 'es2015',
     rollupOptions: {
       output: {
         manualChunks: {
