@@ -1,0 +1,23 @@
+name: Deploy Preview
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - preview
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: railwayapp/cli-action@v1
+        with:
+          railwayToken: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Deploy to Railway Preview
+        run: |
+          railway link --environment preview
+          railway up --detach
+          echo "✅ Preview deployed!" 
