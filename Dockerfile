@@ -7,6 +7,7 @@ WORKDIR /app
 # Set environment variables
 ENV NODE_ENV=production
 ENV RAILWAY_ENVIRONMENT=production
+ENV PATH /app/node_modules/.bin:$PATH
 
 # Copy package files
 COPY package*.json ./
