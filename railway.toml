@@ -1,7 +1,6 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
-buildCommand = "npm install --legacy-peer-deps && npm run build"
 
 [deploy]
 healthcheckPath = "/api/health"

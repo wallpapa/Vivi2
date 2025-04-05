@@ -13,8 +13,8 @@ RUN npm install --legacy-peer-deps
 # Copy the rest of the application
 COPY . .
 
-# Build the application
-RUN npm run build
+# Build the application with explicit environment
+RUN NODE_ENV=production npm run build
 
 # Production stage
 FROM node:20.11.0-alpine
@@ -26,7 +26,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 
 # Install production dependencies only with legacy peer deps
-RUN npm install --production --legacy-peer-deps
+RUN NODE_ENV=production npm install --production --legacy-peer-deps
 
 # Add tini
 RUN apk add --no-cache tini
@@ -37,5 +37,5 @@ EXPOSE 8080
 # Use tini as entrypoint
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# The actual command will be provided by Railway's startCommand
+# Start the server
 CMD ["node", "--experimental-specifier-resolution=node", "dist/server/index.js"] 
