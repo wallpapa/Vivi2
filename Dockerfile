@@ -14,7 +14,9 @@ RUN npm install --legacy-peer-deps
 COPY . .
 
 # Build the application with explicit environment
-RUN NODE_ENV=production npm run build
+ENV NODE_ENV=production
+ENV RAILWAY_ENVIRONMENT=production
+RUN npm run build
 
 # Production stage
 FROM node:20.11.0-alpine
@@ -25,8 +27,12 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 
+# Set production environment variables
+ENV NODE_ENV=production
+ENV RAILWAY_ENVIRONMENT=production
+
 # Install production dependencies only with legacy peer deps
-RUN NODE_ENV=production npm install --production --legacy-peer-deps
+RUN npm install --production --legacy-peer-deps
 
 # Add tini
 RUN apk add --no-cache tini

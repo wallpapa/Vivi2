@@ -7,7 +7,7 @@ healthcheckPath = "/api/health"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
-startCommand = "node --experimental-specifier-resolution=node dist/server/index.js"
+startCommand = "NODE_ENV=production RAILWAY_ENVIRONMENT=production node --experimental-specifier-resolution=node dist/server/index.js"
 
 [env]
 NODE_ENV = "production"
