@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies with legacy peer deps
+RUN npm install --legacy-peer-deps
 
 # Copy the rest of the application
 COPY . .
@@ -25,8 +25,8 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 
-# Install production dependencies only
-RUN npm install --production
+# Install production dependencies only with legacy peer deps
+RUN npm install --production --legacy-peer-deps
 
 # Add tini
 RUN apk add --no-cache tini
