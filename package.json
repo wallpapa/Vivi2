@@ -12,7 +12,7 @@
     "dev:backend": "tsx watch server/index.ts",
     "dev": "vite",
     "prebuild": "tsc --noEmit",
-    "build:frontend": "NODE_ENV=production vite build",
+    "build:frontend": "NODE_ENV=production npx vite build",
     "build:backend": "NODE_ENV=production esbuild server/*.ts --platform=node --format=esm --outdir=dist/server --bundle --external:express --external:dotenv --external:@supabase/supabase-js --external:postgres",
     "build": "NODE_ENV=production npm run build:frontend && NODE_ENV=production npm run build:backend",
     "start": "NODE_OPTIONS='--experimental-specifier-resolution=node' node dist/server/index.js",
