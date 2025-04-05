@@ -1,9 +1,79 @@
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
+import express from 'express';
+import session from 'express-session';
+import bodyParser from 'body-parser';
+
+const app = express();
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'keyboard cat',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}));
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+app.get('/auth/register', (req, res) => {
+  res.send(`
+    <form method="POST" action="/auth/register" style="max-width: 400px; margin: auto;">
+      <h2>Register</h2>
+      <label>Email</label><br />
+      <input type="email" name="email" required /><br />
+      <label>Password</label><br />
+      <input type="password" name="password" required /><br /><br />
+      <button type="submit">Register</button>
+    </form>
+  `);
+});
+
+app.post('/auth/register', async (req, res) => {
+  const { email, password } = req.body;
+  const { data, error } = await supabase.auth.signUp({ email, password });
+
+  if (error) return res.status(400).send(`Error: ${error.message}`);
+  res.send(`<p>✅ Registered successfully. Please check your email to verify.</p>`);
+});
+
+app.get('/auth/login', (req, res) => {
+  res.send(`
+    <form method="POST" action="/auth/login" style="max-width: 400px; margin: auto;">
+      <h2>Login</h2>
+      <label>Email</label><br />
+      <input type="email" name="email" required /><br />
+      <label>Password</label><br />
+      <input type="password" name="password" required /><br /><br />
+      <button type="submit">Login</button>
+    </form>
+  `);
+});
+
+app.post('/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error) return res.status(401).send(`Login failed: ${error.message}`);
+  req.session.user = data.user;
+  res.redirect('/dashboard');
+});
+
+app.use('/dashboard', (req, res, next) => {
+  if (!req.session.user) {
+    return res.redirect('/auth/login');
+  }
+  next();
+});
+
+app.get('/auth/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/auth/login');
+  });
+});
 
 app.get('/dashboard', async (req, res) => {
   if (!supabase) {
@@ -248,3 +318,20 @@ app.get('/admin/commission', async (req, res) => {
     </html>
   `);
 });
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[env]
+NODE_ENV = "production"
+PORT = "8080"
+VITE_API_URL = "https://vivi2-production.up.railway.app"
+RAILWAY_ENVIRONMENT = "production"
+RAILWAY_PUBLIC_DOMAIN = "vivi2-production.up.railway.app"
