@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 const ENV = {
   NODE_ENV: process.env.NODE_ENV || process.env.RAILWAY_ENVIRONMENT || 'development',
   PORT: process.env.PORT || 8080,
-  API_URL: process.env.VITE_API_URL || process.env.RAILWAY_STATIC_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`,
+  API_URL: process.env.VITE_API_URL || `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:8080'}`,
   RAILWAY_PUBLIC_DOMAIN: process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost',
   SUPABASE_URL: process.env.SUPABASE_URL || '',
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || ''
@@ -15,7 +15,11 @@ const ENV = {
 
 // Log environment configuration at startup
 console.log('=== Environment Configuration ===');
-console.log(JSON.stringify(ENV, null, 2));
+console.log('NODE_ENV:', ENV.NODE_ENV);
+console.log('RAILWAY_ENVIRONMENT:', process.env.RAILWAY_ENVIRONMENT);
+console.log('VITE_API_URL:', process.env.VITE_API_URL);
+console.log('RAILWAY_PUBLIC_DOMAIN:', process.env.RAILWAY_PUBLIC_DOMAIN);
+console.log('API_URL:', ENV.API_URL);
 console.log('===============================');
 
 // Convert __dirname for ES modules
@@ -65,7 +69,8 @@ app.get('/api/health', (_req, res) => {
       config: {
         node_env: ENV.NODE_ENV,
         api_url: ENV.API_URL,
-        has_supabase: !!supabase
+        has_supabase: !!supabase,
+        railway_env: process.env.RAILWAY_ENVIRONMENT
       }
     };
     
