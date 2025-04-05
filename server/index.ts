@@ -492,8 +492,10 @@ app.get('/admin/commission', async (req, res) => {
 app.use(express.static(path.join(__dirname, '../client')));
 
 // Catch-all route for SPA support
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/index.html'));
+app.get('*', (_req, res) => {
+  const indexPath = path.join(__dirname, '../client/index.html');
+  console.log('Serving index.html from:', indexPath);
+  res.sendFile(indexPath);
 });
 
 // Start server
@@ -501,4 +503,5 @@ app.listen(port, () => {
   console.log(`🚀 Server running in ${ENV.NODE_ENV} mode on port ${port}`);
   console.log(`Health check: http://localhost:${port}/api/health`);
   console.log(`API URL: ${ENV.API_URL}`);
+  console.log(`Static files served from: ${path.join(__dirname, '../client')}`);
 });

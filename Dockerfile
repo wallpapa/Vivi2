@@ -7,16 +7,20 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with legacy peer deps
-RUN npm install --legacy-peer-deps
+# Install dependencies with legacy peer deps and clean npm cache
+RUN npm cache clean --force && \
+    npm install --legacy-peer-deps
 
 # Copy the rest of the application
 COPY . .
 
-# Build the application with explicit environment
+# Build the application with explicit environment and better error handling
 ENV NODE_ENV=production
 ENV RAILWAY_ENVIRONMENT=production
-RUN npm run build
+RUN echo "Building frontend..." && \
+    npm run build:frontend && \
+    echo "Building backend..." && \
+    npm run build:backend
 
 # Production stage
 FROM node:20.11.0-alpine
@@ -31,8 +35,9 @@ COPY --from=builder /app/package*.json ./
 ENV NODE_ENV=production
 ENV RAILWAY_ENVIRONMENT=production
 
-# Install production dependencies only with legacy peer deps
-RUN npm install --production --legacy-peer-deps
+# Install production dependencies only
+RUN npm cache clean --force && \
+    npm install --production --legacy-peer-deps
 
 # Add tini
 RUN apk add --no-cache tini
